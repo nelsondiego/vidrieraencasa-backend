@@ -1,7 +1,7 @@
 import "./polyfills";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import auth from "./routes/auth";
+import auth from "./modules/auth";
 import storage from "./routes/storage";
 import payments from "./modules/payments";
 import credits from "./routes/credits";
