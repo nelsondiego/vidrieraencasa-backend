@@ -1,0 +1,37 @@
+{
+  "name": "vidrieraencasa-api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "migrate:local": "wrangler d1 migrations apply vidrieraencasa-db --local",
+    "migrate:prod": "wrangler d1 migrations apply vidrieraencasa-db --remote",
+    "studio": "drizzle-kit studio",
+    "ngrok": "ngrok http 8787"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@hono/zod-validator": "^0.7.5",
+    "@jsquash/jpeg": "^1.6.0",
+    "@jsquash/png": "^3.1.1",
+    "@jsquash/webp": "^1.5.0",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.6.14",
+    "mercadopago": "^2.11.0",
+    "pdf-lib": "^1.17.1",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^25.0.2",
+    "better-sqlite3": "^12.5.0",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.54.0"
+  }
+}

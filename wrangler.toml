@@ -1,0 +1,21 @@
+name = "vidrieraencasa-api"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vidrieraencasa-db"
+database_id = "581b05d5-c10a-45df-8491-a2ad8d703b49"
+migrations_dir = "drizzle/migrations"
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "vidrieraencasa"
+
+[vars]
+APP_URL = "http://localhost:3000"
+CDN_URL = "http://localhost:8787/cdn-cgi/image" # Fallback for local dev, we will implement a proxy or user needs to change this
+
