@@ -13,7 +13,29 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.use(
   "/*",
   cors({
-    origin: "*",
+    origin: (origin) => {
+      if (!origin) return null;
+
+      const allowedExactOrigins = new Set([
+        "http://localhost:5173",
+        "https://vidrieraencasa.com",
+        "https://www.vidrieraencasa.com",
+      ]);
+
+      if (allowedExactOrigins.has(origin)) return origin;
+
+      try {
+        const url = new URL(origin);
+        if (url.protocol !== "https:") return null;
+
+        if (url.hostname === "vidrieraencasa.com") return origin;
+        if (url.hostname.endsWith(".vidrieraencasa.com")) return origin;
+
+        return null;
+      } catch {
+        return null;
+      }
+    },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     exposeHeaders: ["Content-Length"],
