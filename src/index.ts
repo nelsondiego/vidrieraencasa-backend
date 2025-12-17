@@ -16,25 +16,20 @@ app.use(
     origin: (origin) => {
       if (!origin) return null;
 
-      const allowedExactOrigins = new Set([
-        "http://localhost:5173",
-        "https://vidrieraencasa.com",
-        "https://www.vidrieraencasa.com",
-      ]);
+      // Local development
+      if (origin.startsWith("http://localhost:")) return origin;
 
-      if (allowedExactOrigins.has(origin)) return origin;
-
-      try {
-        const url = new URL(origin);
-        if (url.protocol !== "https:") return null;
-
-        if (url.hostname === "vidrieraencasa.com") return origin;
-        if (url.hostname.endsWith(".vidrieraencasa.com")) return origin;
-
-        return null;
-      } catch {
-        return null;
+      // Production and subdomains
+      if (
+        origin &&
+        (origin.endsWith(".vidrieraencasa.com") ||
+          origin === "https://vidrieraencasa.com")
+      ) {
+        return origin;
       }
+
+      // Strict mode: if it doesn't match allowed origins, return null to block it.
+      return null;
     },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
