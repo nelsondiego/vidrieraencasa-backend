@@ -15,10 +15,10 @@ app.use(
   cors({
     origin: (origin) => {
       if (!origin) return null;
-      console.log("Origin:", origin);
+
       // Local development
       if (origin.startsWith("http://localhost:")) return origin;
-      console.log("Origin2:", origin);
+
       // Production and subdomains
       if (
         origin &&

@@ -15,9 +15,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hono/zod-validator": "^0.7.5",
-    "@jsquash/jpeg": "^1.6.0",
     "@jsquash/png": "^3.1.1",
-    "@jsquash/webp": "^1.5.0",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.6.14",

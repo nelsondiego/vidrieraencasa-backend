@@ -22,18 +22,18 @@ app.post("/upload", async (c) => {
   if (!file || !(file instanceof File)) {
     return c.json({ error: "No file uploaded" }, 400);
   }
-
-  if (file.type !== "image/webp") {
-    return c.json({ error: "Only WebP images are supported" }, 415);
+  console.log(file.type);
+  if (file.type !== "image/jpeg") {
+    return c.json({ error: "Only jpeg images are supported" }, 415);
   }
 
   let arrayBuffer = await file.arrayBuffer();
   const mimeType = file.type;
-  const filename = file.name.endsWith(".webp")
+  const filename = file.name.endsWith(".jpg")
     ? file.name
-    : `${file.name.replace(/\.[^/.]+$/, "")}.webp`;
+    : `${file.name.replace(/\.[^/.]+$/, "")}.jpg`;
 
-  const key = `${user.id}/${Date.now()}-${filename}`;
+  const key = `images/${user.id}/${Date.now()}-${filename}`;
 
   await c.env.STORAGE.put(key, arrayBuffer, {
     httpMetadata: { contentType: mimeType },
