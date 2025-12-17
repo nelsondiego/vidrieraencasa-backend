@@ -15,34 +15,43 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-loginUser.post(
-  "/login",
-  zValidator("json", loginSchema),
-  async (c) => {
-    const { email, password } = c.req.valid("json");
-    const db = createDbClient(c.env.DB);
+loginUser.post("/login", zValidator("json", loginSchema), async (c) => {
+  const { email, password } = c.req.valid("json");
+  const db = createDbClient(c.env.DB);
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email),
-    });
+  const user = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  });
 
-    if (!user) {
-      return c.json({ error: "Credenciales inválidas" }, 401);
-    }
-
-    const isValid = await verifyPassword(password, user.passwordHash);
-    if (!isValid) {
-      return c.json({ error: "Credenciales inválidas" }, 401);
-    }
-
-    const session = await createSession(db, user.id);
-
-    return c.json({
-      success: true,
-      user: { id: user.id, email: user.email, fullName: user.fullName },
-      session,
-    });
+  if (!user) {
+    return c.json(
+      {
+        error:
+          "No pudimos iniciar sesión. Revisá tu correo y contraseña e intentá de nuevo.",
+      },
+      401
+    );
   }
-);
+
+  const isValid = await verifyPassword(password, user.passwordHash);
+  if (!isValid) {
+    return c.json(
+      {
+        error:
+          "No pudimos iniciar sesión. Revisá tu correo y contraseña e intentá de nuevo.",
+      },
+      401
+    );
+  }
+
+  const session = await createSession(db, user.id);
+
+  return c.json({
+    success: true,
+    message: `¡Bienvenido/a, ${user.fullName}! Tu sesión se inició correctamente.`,
+    user: { id: user.id, email: user.email, fullName: user.fullName },
+    session,
+  });
+});
 
 export default loginUser;

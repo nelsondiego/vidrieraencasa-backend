@@ -53,9 +53,32 @@ app.post("/generate-pdf", async (c) => {
     if (!analysis.diagnosis)
       return c.json({ error: "Analysis not completed" }, 400);
 
-    // Get image from R2
-    const imageBuffer = await getFromR2(c.env.STORAGE, analysis.image.r2Key);
-    if (!imageBuffer) return c.json({ error: "Image not found" }, 404);
+    const sourceUrl = `${c.env.CDN_URL}/${analysis.image.r2Key}`;
+    const transformedResponse = await fetch(sourceUrl, {
+      cf: {
+        image: {
+          format: "jpeg",
+          quality: 85,
+        },
+      },
+    });
+
+    if (!transformedResponse.ok) {
+      return c.json({ error: "Failed to fetch image" }, 502);
+    }
+
+    const contentType = transformedResponse.headers.get("content-type") || "";
+    if (!contentType.includes("image/jpeg")) {
+      return c.json(
+        {
+          error:
+            "Image conversion not available in this environment. Use remote dev or deploy.",
+        },
+        501
+      );
+    }
+
+    const imageBuffer = await transformedResponse.arrayBuffer();
 
     // Generate PDF
     const pdfBuffer = await generateAnalysisPDF({

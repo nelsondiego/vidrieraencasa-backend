@@ -14,8 +14,4 @@ migrations_dir = "drizzle/migrations"
 [[r2_buckets]]
 binding = "STORAGE"
 bucket_name = "vidrieraencasa"
-
-[vars]
-APP_URL = "http://localhost:3000"
-CDN_URL = "http://localhost:8787/cdn-cgi/image" # Fallback for local dev, we will implement a proxy or user needs to change this
-
+# Fallback for local dev, we will implement a proxy or user needs to change this

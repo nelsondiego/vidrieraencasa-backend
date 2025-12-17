@@ -6,8 +6,6 @@ import {
   StandardFonts,
   RGB,
 } from "pdf-lib";
-import * as webp from "@jsquash/webp";
-import * as jpeg from "@jsquash/jpeg";
 
 interface DiagnosisData {
   overallAssessment: string;
@@ -96,30 +94,7 @@ export async function generateAnalysisPDF(
 
     // Main Image (Centered and Large)
     try {
-      let image;
-      let bufferToEmbed = imageBuffer;
-
-      // Attempt to convert WebP to JPEG
-      try {
-        const imageData = await webp.decode(imageBuffer);
-        bufferToEmbed = await jpeg.encode(imageData);
-      } catch (e) {
-        // Ignore error, assume it's not WebP or decoding failed
-        // console.log("Not a WebP image or decode failed", e);
-      }
-
-      try {
-        // Try JPG first
-        image = await pdfDoc.embedJpg(bufferToEmbed);
-      } catch (e) {
-        // Try PNG if JPG fails
-        try {
-          image = await pdfDoc.embedPng(bufferToEmbed);
-        } catch (e2) {
-          console.error("Failed to embed image as JPG or PNG", e2);
-          throw new Error("Formato de imagen no soportado");
-        }
-      }
+      const image = await pdfDoc.embedJpg(imageBuffer);
 
       const imageAspectRatio = image.width / image.height;
       const maxImageHeight = 400;
