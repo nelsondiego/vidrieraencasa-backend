@@ -34,7 +34,7 @@ handleWebhook.post("/webhook", async (c) => {
   // Sometimes MP sends 'topic' query param instead of body structure for certain events, but modern webhooks use body.
 
   if (body.type === "payment" || body.topic === "payment") {
-    const paymentId = body.id || body.data?.id || body.resource; // data.id is standard for v1, resource is for topic
+    const paymentId = body.data?.id || body.id || body.resource; // data.id is standard for v1, resource is for topic
 
     if (!paymentId) {
       console.error("Missing payment ID in webhook");

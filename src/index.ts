@@ -23,7 +23,9 @@ app.use(
       if (
         origin &&
         (origin.endsWith(".vidrieraencasa.com") ||
-          origin === "https://vidrieraencasa.com")
+          origin.endsWith(".vidrieraencasa.test") ||
+          origin === "https://vidrieraencasa.com" ||
+          origin === "https://vidrieraencasa.test")
       ) {
         return origin;
       }
