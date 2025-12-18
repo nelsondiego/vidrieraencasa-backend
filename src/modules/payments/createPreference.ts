@@ -91,6 +91,8 @@ createPreference.post(
             quantity: 1,
             unit_price: planInfo.price,
             currency_id: "ARS",
+            description: planInfo.title, // Recommended action: Item description
+            category_id: "services", // Recommended action: Item category
           },
         ],
         payer: {
@@ -108,6 +110,8 @@ createPreference.post(
           user_id: user.id.toString(),
           plan_type: planType,
         },
+        external_reference: user.id.toString(), // Mandatory action: External reference
+        statement_descriptor: "VIDRIERA EN CASA", // Good practice: Clear name on bank statement
       };
 
       // Only enable auto_return in production to avoid "invalid_auto_return" errors with localhost
