@@ -1,6 +1,7 @@
 import "./polyfills";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 import auth from "./modules/auth";
 import storage from "./routes/storage";
 import payments from "./modules/payments";
@@ -10,11 +11,14 @@ import { Bindings } from "./types";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+app.use(logger());
+
 app.use(
   "/*",
   cors({
     origin: (origin) => {
-      if (!origin) return null;
+      // Allow requests with no origin (e.g. server-to-server webhooks, curl, mobile apps)
+      if (!origin) return "*";
 
       // Local development
       if (origin.startsWith("http://localhost:")) return origin;
@@ -34,7 +38,12 @@ app.use(
       return null;
     },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-signature",
+      "x-request-id",
+    ],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
     credentials: true,
