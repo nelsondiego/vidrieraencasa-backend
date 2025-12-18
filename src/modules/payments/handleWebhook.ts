@@ -96,7 +96,7 @@ handleWebhook.post("/webhook", async (c) => {
         });
 
         // 2. Allocate Credits
-        if (planType === "addon") {
+        if (planType.startsWith("addon_")) {
           // Add-on logic
           // Expires at end of current month
           const expirationDate = new Date(
@@ -141,7 +141,7 @@ handleWebhook.post("/webhook", async (c) => {
             .insert(plans)
             .values({
               userId,
-              type: planType,
+              type: planType as "single" | "monthly_3" | "monthly_10",
               credits: planDetails.credits,
               creditsRemaining: planDetails.credits,
               startDate: now,

@@ -11,7 +11,14 @@ import { PLAN_PRICING } from "./constants";
 const createPreference = new Hono<{ Bindings: Bindings }>();
 
 const createPreferenceSchema = z.object({
-  planType: z.enum(["single", "monthly_3", "monthly_10", "addon"]),
+  planType: z.enum([
+    "single",
+    "monthly_3",
+    "monthly_10",
+    "addon_1",
+    "addon_3",
+    "addon_5",
+  ]),
 });
 
 createPreference.post(

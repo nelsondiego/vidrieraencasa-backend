@@ -99,7 +99,7 @@ Este flujo describe cómo un usuario adquiere una suscripción recurrente (ej. M
 Este flujo aplica cuando un usuario compra créditos extra (paquete único).
 
 1.  **Inicio de Pago**:
-    - Similar al plan mensual, pero con `plan_type: "addon"` en metadata.
+    - Similar al plan mensual, pero con `plan_type` correspondiente (ej: `addon_1`, `addon_3`, `addon_5`) en metadata.
 2.  **Procesamiento de Webhook**:
     - Validación de firma e idempotencia.
 3.  **Activación del Add-on**:

@@ -353,7 +353,7 @@ Inicia el proceso de compra de créditos o planes.
 - **Payload:**
   ```json
   {
-    "planType": "single" // Opciones: "single", "monthly_3", "monthly_10", "addon"
+    "planType": "single" // Opciones: "single", "monthly_3", "monthly_10", "addon_1", "addon_3", "addon_5"
   }
   ```
 - **Respuesta Exitosa (200 OK):**
