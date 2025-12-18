@@ -123,9 +123,17 @@ createPreference.post(
         body: preferenceBody,
       });
 
+      console.log("Preference created successfully", result.id);
       return c.json({ id: result.id });
     } catch (error) {
-      console.error("preferencia error", error);
+      console.error("Error creating preference:", error);
+      // Log more details if it's a Mercado Pago error
+      if (typeof error === "object" && error !== null && "cause" in error) {
+        console.error(
+          "MP Error Cause:",
+          JSON.stringify((error as any).cause, null, 2)
+        );
+      }
       return c.json({ error: "Failed to create preference" }, 500);
     }
   }
