@@ -11,6 +11,7 @@ export const users = sqliteTable(
     passwordHash: text("password_hash").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+    dni: text("dni"),
   },
   (table) => ({
     emailIdx: index("users_email_idx").on(table.email),

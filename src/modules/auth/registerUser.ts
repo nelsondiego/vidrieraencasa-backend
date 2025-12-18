@@ -13,6 +13,7 @@ const registerUser = new Hono<{ Bindings: Bindings }>();
 const registerSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(2),
+  dni: z.string().optional(),
   password: z.string().min(8),
 });
 
@@ -20,7 +21,7 @@ registerUser.post(
   "/register",
   zValidator("json", registerSchema),
   async (c) => {
-    const { email, fullName, password } = c.req.valid("json");
+    const { email, fullName, dni, password } = c.req.valid("json");
     const db = createDbClient(c.env.DB);
 
     // Check if user exists
@@ -43,6 +44,7 @@ registerUser.post(
       .values({
         email,
         fullName,
+        dni,
         passwordHash,
         createdAt: now,
         updatedAt: now,
@@ -57,6 +59,7 @@ registerUser.post(
         id: newUser.id,
         email: newUser.email,
         fullName: newUser.fullName,
+        dni: newUser.dni,
       },
       session,
     });
