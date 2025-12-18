@@ -17,5 +17,5 @@ bucket_name = "vidrieraencasa"
 
 [vars]
 APP_URL = "https://vidrieraencasa.com"
-CDN_URL = "https://cdn.vidrieraencasa.com" # Fallback for local dev, we will implement a proxy or user needs to change this
-
+CDN_URL = "https://cdn.vidrieraencasa.com"
+MERCADOPAGO_WEBHOOK_URL = "https://api.vidrieraencasa.com"
