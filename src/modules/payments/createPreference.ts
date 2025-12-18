@@ -72,6 +72,9 @@ createPreference.post(
       pending: `${appUrl}/pago/pendiente`,
     };
 
+    const [firstName, ...lastNameParts] = user.fullName.split(" ");
+    const lastName = lastNameParts.join(" ") || " ";
+
     try {
       const preferenceBody: any = {
         items: [
@@ -83,6 +86,15 @@ createPreference.post(
             currency_id: "ARS",
           },
         ],
+        payer: {
+          email: user.email,
+          name: firstName,
+          surname: lastName,
+          identification: {
+            type: "dni",
+            number: user.dni || "",
+          },
+        },
         back_urls: backUrls,
         notification_url: notificationUrl,
         metadata: {
