@@ -2,8 +2,6 @@ name = 'vidrieraencasa-backend'
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-[observability]
-enabled = true
 
 [[d1_databases]]
 binding = "DB"
@@ -19,3 +17,15 @@ bucket_name = "vidrieraencasa"
 APP_URL = "https://vidrieraencasa.com"
 CDN_URL = "https://cdn.vidrieraencasa.com"
 MERCADOPAGO_WEBHOOK_URL = "https://api.vidrieraencasa.com"
+
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
