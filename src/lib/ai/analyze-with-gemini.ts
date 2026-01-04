@@ -5,6 +5,16 @@ import { buildCombinedPrompt } from "./build-analysis-prompt";
 const geminiResponseSchema = z.object({
   score: z.number().min(0).max(100).default(50),
   overallAssessment: z.string().max(500),
+  focalPoints: z
+    .string()
+    .max(500)
+    .default("No se pudo analizar los puntos focales."),
+  lighting: z.string().max(500).default("No se pudo analizar la iluminación."),
+  signage: z.string().max(500).default("No se pudo analizar la cartelería."),
+  distribution: z
+    .string()
+    .max(500)
+    .default("No se pudo analizar la distribución."),
   strengths: z.array(z.string()).max(3),
   issues: z.array(z.string()).max(4),
   priorityFixes: z.array(z.string()).max(3),

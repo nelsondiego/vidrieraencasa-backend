@@ -42,6 +42,10 @@ FORMATO DE RESPUESTA (OBLIGATORIO Y ESTRICTO):
 {
   "score": 85,
   "overallAssessment": "...",
+  "focalPoints": "...",
+  "lighting": "...",
+  "signage": "...",
+  "distribution": "...",
   "strengths": ["..."],
   "issues": ["..."],
   "priorityFixes": ["..."],
@@ -59,6 +63,18 @@ DESCRIPCIÓN DE CADA CAMPO:
 - overallAssessment:
   Resumen ejecutivo en 2 o 3 frases.
   Debe explicar el impacto comercial actual de la vidriera.
+
+- focalPoints:
+  Análisis de los puntos de atracción visual. ¿Dónde se detiene el ojo? ¿Hay un producto héroe claro?
+
+- lighting:
+  Evaluación de la iluminación. ¿Es suficiente? ¿Resalta el producto o genera sombras molestas? ¿Hay reflejos?
+
+- signage:
+  Análisis de la cartelería y comunicación. ¿Los precios son visibles? ¿El mensaje es profesional o improvisado?
+
+- distribution:
+  Evaluación del uso del espacio y niveles. ¿La vidriera está sobrecargada o vacía? ¿Hay una jerarquía visual clara?
 
 - strengths:
   Máximo 3.

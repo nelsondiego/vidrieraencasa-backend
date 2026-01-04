@@ -13,10 +13,14 @@ Al consultar un análisis (`GET /analysis/:id` o `GET /analysis/history`), el ob
 ```typescript
 interface Analysis {
   id: number;
-  isFreeTier: boolean; // <-- Nuevo
+  isFreeTier: boolean; // Indica si el análisis fue realizado utilizando un crédito de regalo
   diagnosis: {
-    score: number; // <-- Nuevo (0-100)
+    score: number; // (0-100)
     overallAssessment: string;
+    focalPoints: string; // <-- Nuevo: Análisis de puntos focales
+    lighting: string; // <-- Nuevo: Análisis de iluminación
+    signage: string; // <-- Nuevo: Análisis de cartelería
+    distribution: string; // <-- Nuevo: Análisis de distribución
     strengths: string[];
     issues: string[];
     priorityFixes: string[];
@@ -34,6 +38,7 @@ Según los requerimientos del negocio, si `isFreeTier === true`, el frontend deb
 ### A. Pantalla de Detalle del Análisis
 - **Puntaje (Score):** Debe mostrarse SIEMPRE.
 - **Resumen (Overall Assessment):** Debe mostrarse SIEMPRE.
+- **Secciones Específicas (FocalPoints, Lighting, Signage, Distribution):** Deben mostrarse SIEMPRE (son parte del análisis básico).
 - **Detalles Bloqueados:** Los campos `strengths`, `issues`, `priorityFixes`, `recommendations` y `suggestedSignageText` deben estar **ocultos tras un blur o un banner de "Upgrade"**.
 
 ### B. Ejemplo de UI para Bloqueo
@@ -41,10 +46,16 @@ Según los requerimientos del negocio, si `isFreeTier === true`, el frontend deb
 {analysis.isFreeTier ? (
   <div className="relative">
     <DiagnosisSummary text={analysis.diagnosis.overallAssessment} />
+    <div className="grid grid-cols-2 gap-4 my-4">
+      <Section title="Puntos Focales" text={analysis.diagnosis.focalPoints} />
+      <Section title="Iluminación" text={analysis.diagnosis.lighting} />
+      <Section title="Cartelería" text={analysis.diagnosis.signage} />
+      <Section title="Distribución" text={analysis.diagnosis.distribution} />
+    </div>
     <div className="blur-sm select-none pointer-events-none">
       <DiagnosisDetails details={analysis.diagnosis} />
     </div>
-    <UpgradeBanner message="¡Tu vidriera tiene un puntaje de {analysis.diagnosis.score}! Compra créditos para desbloquear el análisis completo y las recomendaciones profesionales." />
+    <UpgradeBanner message="¡Tu vidriera tiene un puntaje de {analysis.diagnosis.score}! Compra créditos para desbloquear las recomendaciones profesionales." />
   </div>
 ) : (
   <DiagnosisFullDetails details={analysis.diagnosis} />

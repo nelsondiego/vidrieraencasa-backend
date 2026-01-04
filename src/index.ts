@@ -28,6 +28,7 @@ app.use(
         origin &&
         (origin.endsWith(".vidrieraencasa.com") ||
           origin.endsWith(".vidrieraencasa.test") ||
+          origin.endsWith(".ngrok-free.app") ||
           origin === "https://vidrieraencasa.com" ||
           origin === "https://vidrieraencasa.test")
       ) {
@@ -43,6 +44,7 @@ app.use(
       "Authorization",
       "x-signature",
       "x-request-id",
+      "ngrok-skip-browser-warning",
     ],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
