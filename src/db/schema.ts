@@ -46,12 +46,12 @@ export const plans = sqliteTable(
       .notNull()
       .references(() => users.id),
     type: text("type", {
-      enum: ["single", "monthly_3", "monthly_10"],
+      enum: ["freetier", "single", "monthly_3", "monthly_10"],
     }).notNull(),
     credits: integer("credits").notNull(),
     creditsRemaining: integer("credits_remaining").notNull(),
     startDate: integer("start_date", { mode: "timestamp" }).notNull(),
-    endDate: integer("end_date", { mode: "timestamp" }).notNull(),
+    endDate: integer("end_date", { mode: "timestamp" }),
     resetDate: integer("reset_date", { mode: "timestamp" }),
     status: text("status", { enum: ["active", "expired"] }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
@@ -120,6 +120,9 @@ export const analyses = sqliteTable(
     imageId: integer("image_id")
       .notNull()
       .references(() => images.id),
+    isFreeTier: integer("is_free_tier", { mode: "boolean" })
+      .notNull()
+      .default(false),
     status: text("status", {
       enum: ["pending", "processing", "completed", "failed"],
     }).notNull(),

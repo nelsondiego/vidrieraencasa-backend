@@ -6,7 +6,7 @@ Esta documentación detalla los endpoints disponibles en la API de Vidriera En C
 
 ### Registro de Usuario
 
-Crea una nueva cuenta de usuario.
+Crea una nueva cuenta de usuario. **Nota:** Al registrarse, el usuario recibe automáticamente 1 crédito gratuito (Free Tier) válido por 30 días.
 
 - **Endpoint:** `POST /auth/register`
 - **Headers:** `Content-Type: application/json`

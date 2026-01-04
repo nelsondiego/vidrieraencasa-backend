@@ -1,0 +1,1 @@
+ALTER TABLE `analyses` ADD `is_free_tier` integer DEFAULT false NOT NULL;

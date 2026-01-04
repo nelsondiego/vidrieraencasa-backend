@@ -3,6 +3,7 @@ import { z } from "zod";
 import { buildCombinedPrompt } from "./build-analysis-prompt";
 
 const geminiResponseSchema = z.object({
+  score: z.number().min(0).max(100).default(50),
   overallAssessment: z.string().max(500),
   strengths: z.array(z.string()).max(3),
   issues: z.array(z.string()).max(4),
@@ -62,6 +63,33 @@ export async function analyzeImageWithGemini(
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
+
+    // Force score parsing if missing or zero in a suspicious way
+    if (typeof parsed.score !== "number") {
+      // Try to find a score in the text if it's not in the JSON
+      const scoreMatch = text.match(/score["\s:]+(\d+)/i);
+      if (scoreMatch) {
+        parsed.score = parseInt(scoreMatch[1]);
+      } else {
+        // Simple heuristic: if overallAssessment is very negative, score is low
+        const lowerText = text.toLowerCase();
+        if (
+          lowerText.includes("caótico") ||
+          lowerText.includes("desorden") ||
+          lowerText.includes("suciedad")
+        ) {
+          parsed.score = 25;
+        } else if (
+          lowerText.includes("atractiva") ||
+          lowerText.includes("buena")
+        ) {
+          parsed.score = 75;
+        } else {
+          parsed.score = 50;
+        }
+      }
+    }
+
     return validateGeminiResponse(parsed);
   } catch (error) {
     console.error("Error analyzing image with Gemini:", {

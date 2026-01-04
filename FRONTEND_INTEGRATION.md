@@ -1,112 +1,51 @@
-# Guía de Integración Frontend - Vidriera En Casa
+# Guía de Integración para el Frontend - Vidriera En Casa
 
-Este documento detalla soluciones a problemas comunes y guías de uso de la API para el equipo de Frontend.
+Este documento resume los cambios recientes en la lógica de créditos y planes, específicamente enfocados en el **Free Tier** y la transición a planes de pago.
 
-## Problemas Resueltos Recientemente
+## 1. Registro de Usuario y Crédito Inicial
 
-### Error `Invalid ID` al llamar a `/analysis/history`
+Cada vez que un usuario se registra mediante el endpoint `POST /auth/register`, el backend realiza automáticamente lo siguiente:
+- Crea la cuenta del usuario.
+- Asigna un plan de tipo `freetier`.
+- Carga **1 crédito** inicial de regalo.
 
-**Síntoma:**
-El frontend recibe un error `400 Bad Request` con el mensaje `{"error": "Invalid ID"}` al intentar obtener el historial de análisis.
+**Importante para el Frontend:**
+- El crédito Free Tier **no tiene fecha de expiración**. En la respuesta de la API (por ejemplo, en `/auth/me` o `/credits/status`), la fecha de fin vendrá como `null`.
+- Debes mostrar al usuario que tiene 1 análisis disponible de regalo al iniciar.
 
-**Causa:**
-Existía un conflicto de rutas en la API. La ruta dinámica `GET /analysis/:id` estaba definida antes que `GET /analysis/history`. Como resultado, el servidor interpretaba la palabra "history" como si fuera un `:id`, intentaba convertirlo a número, fallaba (`NaN`) y devolvía el error.
+## 2. Lógica de Consumo
 
-**Solución (Backend):**
-Se ha corregido el orden de las rutas en el backend. Ahora `GET /analysis/history` se define antes que `GET /analysis/:id`.
+El sistema de créditos prioriza automáticamente el uso de créditos:
+1. Primero se consumen los créditos de **Planes** (incluyendo el Free Tier).
+2. Si no hay créditos en el plan, se consumen los **Add-ons** (packs de créditos extra).
 
-**Acción Requerida (Frontend):**
-Ninguna acción requerida en el código del frontend. Simplemente reintentar la petición.
+## 3. Compra de Créditos y Transición
 
----
+Cuando un usuario decide comprar un plan pago (`single`, `monthly_3`, `monthly_10`) o un pack de créditos (`addon_1`, `addon_3`, `addon_5`):
 
-## Guía de Consumo de API
+- **Desactivación del Free Tier:** En el momento en que el pago es aprobado (ya sea vía webhook o procesamiento directo), el sistema **desactiva automáticamente** cualquier plan `freetier` activo.
+- **Persistencia:** Los créditos gratuitos no se acumulan con los pagos; el plan de pago reemplaza al plan gratuito.
 
-### Manejo de Errores
-La API utiliza códigos de estado HTTP estándar. El frontend debe manejar estos casos:
+## 4. Endpoints Relevantes para el Frontend
 
-*   **400 Bad Request:** Datos enviados incorrectos (ej. validación fallida). Revisar `error` en el body.
-*   **401 Unauthorized:** Token no válido o expirado. **Acción:** Redirigir a login.
-*   **403 Forbidden:** El usuario no tiene permiso para acceder al recurso (ej. intentar ver un análisis de otro usuario).
-*   **404 Not Found:** Recurso no encontrado.
-*   **429 Too Many Requests:** (Opcional) Límite de peticiones excedido.
-*   **500 Internal Server Error:** Error inesperado en el servidor.
+### Obtener Estado de Créditos
+- **Endpoint:** `GET /credits/status` (o similar, según implementación actual)
+- **Campos clave:**
+    - `plan.type`: Puede ser `"freetier"`, `"single"`, `"monthly_3"`, o `"monthly_10"`.
+    - `plan.endDate`: Será `null` si el tipo es `"freetier"`.
+    - `creditsRemaining`: Total de créditos disponibles para usar.
 
-### Autenticación
-Todas las rutas protegidas requieren el header:
-`Authorization: Bearer <TOKEN>`
+### Listado de Precios y Planes
+Los planes disponibles para compra (que deben mostrarse en la UI de precios) son:
+- **Análisis Único:** `single`
+- **Plan Mensual 3:** `monthly_3`
+- **Plan Mensual 10:** `monthly_10`
+- **Packs Extra:** `addon_1`, `addon_3`, `addon_5`
 
-El token se obtiene en la respuesta de `/auth/login` o `/auth/register`.
+**Nota:** El `freetier` NO debe aparecer como una opción de compra, ya que se asigna solo una vez al registrarse.
 
-### Paginación
-Los endpoints de listado (como `/analysis/history`) soportan paginación mediante query params:
-*   `page`: Número de página (empieza en 1).
-*   `limit`: Cantidad de elementos por página.
+## 5. Recomendaciones de UI/UX
 
-Ejemplo: `/analysis/history?page=2&limit=5`
-
-### Descarga de Archivos (PDF)
-Para descargar archivos, se recomienda usar el endpoint directo que devuelve el stream del archivo con los headers correctos para forzar la descarga en el navegador.
-
-*   **Endpoint:** `GET /analysis/:id/pdf`
-*   **Uso en Frontend:**
-    Se recomienda hacer una petición con `axios` o `fetch` configurando `responseType: 'blob'`, y luego crear una URL temporal para descargar.
-
-    ```javascript
-    const downloadPdf = async (analysisId) => {
-      try {
-        const response = await api.get(`/analysis/${analysisId}/pdf`, {
-          responseType: 'blob', // Importante
-        });
-        
-        // Crear link temporal
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `analisis-${analysisId}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      } catch (error) {
-        console.error("Error descargando PDF", error);
-      }
-    };
-    ```
-
-## Endpoints Clave
-
-| Acción | Método | Endpoint | Notas |
-| :--- | :--- | :--- | :--- |
-| **Login** | POST | `/auth/login` | Devuelve `session.token` |
-| **Registro** | POST | `/auth/register` | Requiere `fullName`, `email`, `password` |
-| **Perfil** | GET | `/auth/me` | Devuelve datos del usuario (incluyendo `fullName`) |
-| **Subir Imagen** | POST | `/storage/upload` | Usar `FormData` con campo `file`. Devuelve URL CDN. |
-| **Analizar** | POST | `/analysis/analyze` | Requiere `imageId` |
-| **Historial** | GET | `/analysis/history` | Paginado. Incluye URLs CDN. |
-| **Créditos** | GET | `/credits/available` | Saldo actual |
-
-### Nuevas Características (CDN & Campos)
-
-#### URLs de Imágenes y PDFs
-Ahora la API devuelve URLs absolutas que apuntan al CDN (`cdn.vidrieraencasa.com` o proxy local).
-Ya no es necesario construir URLs manualmente en el frontend.
-
-**Ejemplo de respuesta (`/analysis/history`):**
-```json
-{
-  "success": true,
-  "history": [
-    {
-      "id": 1,
-      "imageUrl": "https://cdn.vidrieraencasa.com/users/1/image.jpg",
-      "pdfUrl": "https://cdn.vidrieraencasa.com/reports/1/report.pdf",
-      ...
-    }
-  ]
-}
-```
-
-#### Campo `fullName` en Usuario
-El usuario ahora tiene un campo `fullName`.
-*   **Registro:** El payload de `/auth/register` ahora requiere `fullName`.
-*   **Respuesta:** Los objetos de usuario en `/auth/login`, `/auth/register` y `/auth/me` incluyen `fullName`.
+1. **Estado inicial:** "¡Bienvenido! Tienes 1 análisis gratuito para comenzar."
+2. **Sin fecha de vencimiento:** Si el plan es `freetier`, evita mostrar mensajes de "Vence en X días". Puedes usar "Crédito de regalo disponible".
+3. **Upgrade:** Una vez que el usuario compra un plan, el texto de "Free Tier" debe desaparecer de la interfaz para mostrar el nombre del nuevo plan adquirido.

@@ -3,7 +3,7 @@ import { MercadoPagoConfig, Payment } from "mercadopago";
 import { Bindings } from "../../types";
 import { createDbClient } from "../../db/client";
 import { payments, plans, addons, creditTransactions } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { PLAN_PRICING } from "./constants";
 
 const handleWebhook = new Hono<{ Bindings: Bindings }>();
@@ -95,7 +95,19 @@ handleWebhook.post("/webhook", async (c) => {
           updatedAt: now,
         });
 
-        // 2. Allocate Credits
+        // 2. Deactivate any active freetier plan if user is buying credits
+        await db
+          .update(plans)
+          .set({ status: "expired" })
+          .where(
+            and(
+              eq(plans.userId, userId),
+              eq(plans.type, "freetier"),
+              eq(plans.status, "active")
+            )
+          );
+
+        // 3. Allocate Credits
         if (planType.startsWith("addon_")) {
           // Add-on logic
           // Expires at end of current month

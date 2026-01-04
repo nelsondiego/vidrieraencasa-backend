@@ -1,4 +1,4 @@
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, gte, or, isNull } from "drizzle-orm";
 import { plans, addons, creditTransactions } from "../../db/schema";
 import { DbClient } from "../../db/client";
 
@@ -8,6 +8,7 @@ export type ConsumeUserCreditResult =
       remainingCredits: number;
       sourceType: "plan" | "addon";
       sourceId: number;
+      isFreeTier: boolean;
     }
   | { success: false; error: string };
 
@@ -32,7 +33,8 @@ export async function consumeUserCredit(
     where: and(
       eq(plans.userId, userId),
       eq(plans.status, "active"),
-      gt(plans.creditsRemaining, 0)
+      gt(plans.creditsRemaining, 0),
+      or(isNull(plans.endDate), gte(plans.endDate, now))
     ),
     orderBy: (plans, { asc }) => [asc(plans.createdAt)],
     limit: 1,
@@ -65,6 +67,7 @@ export async function consumeUserCredit(
       remainingCredits: plan.creditsRemaining - 1,
       sourceType: "plan",
       sourceId: plan.id,
+      isFreeTier: plan.type === "freetier",
     };
   }
 
@@ -73,19 +76,15 @@ export async function consumeUserCredit(
     where: and(
       eq(addons.userId, userId),
       eq(addons.status, "active"),
-      gt(addons.creditsRemaining, 0)
+      gt(addons.creditsRemaining, 0),
+      gte(addons.expirationDate, now) // Filter by expiration date in query
     ),
     orderBy: (addons, { asc }) => [asc(addons.purchaseDate)],
     limit: 1,
   });
 
-  // Filter by expiration date
-  const validAddons = activeAddons.filter(
-    (addon) => addon.expirationDate >= now
-  );
-
-  if (validAddons.length > 0) {
-    const addon = validAddons[0];
+  if (activeAddons.length > 0) {
+    const addon = activeAddons[0];
 
     // Update add-on credits
     await db
@@ -111,6 +110,7 @@ export async function consumeUserCredit(
       remainingCredits: addon.creditsRemaining - 1,
       sourceType: "addon",
       sourceId: addon.id,
+      isFreeTier: false,
     };
   }
 

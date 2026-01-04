@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { createDbClient } from "../../db/client";
 import { plans, addons } from "../../db/schema";
+import { eq, and } from "drizzle-orm";
 import { validateSession } from "../../lib/auth/session";
 import { Bindings } from "../../types";
 
@@ -90,6 +91,18 @@ processPayment.post(
         const startDate = now;
         const endDate = new Date(now);
         endDate.setDate(endDate.getDate() + 30); // Default 30 days validity
+
+        // Deactivate any active freetier plan if user is buying credits
+        await db
+          .update(plans)
+          .set({ status: "expired" })
+          .where(
+            and(
+              eq(plans.userId, userId),
+              eq(plans.type, "freetier"),
+              eq(plans.status, "active")
+            )
+          );
 
         // 5. Activate Plan/Addon in DB
         if (["single", "monthly_3", "monthly_10"].includes(planType)) {

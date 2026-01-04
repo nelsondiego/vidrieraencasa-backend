@@ -212,6 +212,7 @@ app.post("/analyze", async (c) => {
         userId: user.id,
         imageId: imageId,
         status: "pending",
+        isFreeTier: false, // Default, will update after credit check
         diagnosis: null,
         pdfR2Key: null,
         createdAt: new Date(),
@@ -234,10 +235,13 @@ app.post("/analyze", async (c) => {
     }
     creditConsumed = true;
 
-    // Update status to processing
+    // Update status to processing and set isFreeTier from credit result
     await db
       .update(analyses)
-      .set({ status: "processing" })
+      .set({
+        status: "processing",
+        isFreeTier: creditResult.isFreeTier,
+      })
       .where(eq(analyses.id, analysisId));
 
     // Retrieve image from R2
@@ -327,11 +331,15 @@ app.get("/history", async (c) => {
     },
   });
 
-  const historyWithUrls = history.map((item) => ({
-    ...item,
-    imageUrl: `${c.env.CDN_URL}/${item.image.r2Key}`,
-    pdfUrl: item.pdfR2Key ? `${c.env.CDN_URL}/${item.pdfR2Key}` : null,
-  }));
+  const historyWithUrls = history.map((item) => {
+    const diagnosis = item.diagnosis ? JSON.parse(item.diagnosis) : null;
+    return {
+      ...item,
+      diagnosis,
+      imageUrl: `${c.env.CDN_URL}/${item.image.r2Key}`,
+      pdfUrl: item.pdfR2Key ? `${c.env.CDN_URL}/${item.pdfR2Key}` : null,
+    };
+  });
 
   return c.json({ success: true, history: historyWithUrls, page, limit });
 });
@@ -359,10 +367,13 @@ app.get("/:id", async (c) => {
   if (!analysis) return c.json({ error: "Analysis not found" }, 404);
   if (analysis.userId !== user.id) return c.json({ error: "Forbidden" }, 403);
 
+  const diagnosis = analysis.diagnosis ? JSON.parse(analysis.diagnosis) : null;
+
   return c.json({
     success: true,
     analysis: {
       ...analysis,
+      diagnosis,
       imageUrl: `${c.env.CDN_URL}/${analysis.image.r2Key}`,
       pdfUrl: analysis.pdfR2Key
         ? `${c.env.CDN_URL}/${analysis.pdfR2Key}`

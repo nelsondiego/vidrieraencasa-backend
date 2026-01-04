@@ -27,7 +27,7 @@ Tu objetivo es que el comerciante:
 2. Sepa qué está frenando que la gente entre
 3. Tenga claro qué cambiar primero para mejorar resultados
 
-Respondé EXCLUSIVAMENTE en JSON válido.
+Respondé EXCLUSIVAMENTE en JSON válido. El campo "score" es obligatorio y debe ser un número entero.
 
 `;
 
@@ -37,9 +37,10 @@ Si la imagen no permite un análisis confiable (oscura, borrosa, reflejos, encua
 - indicá la limitación en el diagnóstico
 - ajustá las recomendaciones
 
-FORMATO DE RESPUESTA (OBLIGATORIO):
+FORMATO DE RESPUESTA (OBLIGATORIO Y ESTRICTO):
 
 {
+  "score": 85,
   "overallAssessment": "...",
   "strengths": ["..."],
   "issues": ["..."],
@@ -49,6 +50,11 @@ FORMATO DE RESPUESTA (OBLIGATORIO):
 }
 
 DESCRIPCIÓN DE CADA CAMPO:
+
+- score (OBLIGATORIO):
+  Número entero entre 0 y 100. No omitir bajo ninguna circunstancia.
+  Representa el "Puntaje de Atracción Global".
+  Criterios: 0-30 (Crítico/No atrae), 31-60 (Regular/Pasa desapercibida), 61-85 (Bueno/Atractivo), 86-100 (Excelente/Nivel profesional).
 
 - overallAssessment:
   Resumen ejecutivo en 2 o 3 frases.
