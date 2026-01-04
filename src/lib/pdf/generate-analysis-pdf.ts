@@ -8,7 +8,12 @@ import {
 } from "pdf-lib";
 
 interface DiagnosisData {
+  score: number;
   overallAssessment: string;
+  focalPoints: string;
+  lighting: string;
+  signage: string;
+  distribution: string;
   strengths: string[];
   issues: string[];
   priorityFixes: string[];
@@ -18,277 +23,438 @@ interface DiagnosisData {
 
 interface GeneratePDFOptions {
   imageBuffer: ArrayBuffer;
+  logoBuffer?: ArrayBuffer | Uint8Array;
   analysisDate: Date;
   diagnosis: DiagnosisData;
 }
 
+// --- Theme Colors (Web-matched) ---
+const COLORS = {
+  bg: rgb(0.02, 0.04, 0.08), // Dark navy background
+  card: rgb(0.06, 0.09, 0.16), // Slightly lighter card background
+  primaryText: rgb(1, 1, 1),
+  secondaryText: rgb(0.6, 0.65, 0.75),
+  accent: rgb(0.4, 0.5, 1.0), // Blue
+  success: rgb(0.2, 0.8, 0.4), // Green
+  warning: rgb(1.0, 0.7, 0.2), // Yellow
+  danger: rgb(0.9, 0.3, 0.3), // Red
+  purple: rgb(0.6, 0.4, 0.9),
+};
+
 /**
  * Generate PDF report for analysis
- *
- * Creates a professional PDF document containing:
- * - Cover page with image
- * - Executive summary
- * - Detailed diagnosis
- * - Action plan
- *
- * @param options - PDF generation options
- * @returns PDF as ArrayBuffer
  */
 export async function generateAnalysisPDF(
   options: GeneratePDFOptions
 ): Promise<ArrayBuffer> {
-  const { imageBuffer, analysisDate, diagnosis } = options;
+  const { imageBuffer, logoBuffer, analysisDate, diagnosis } = options;
 
   try {
     const pdfDoc = await PDFDocument.create();
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const italicFont = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-    // --- PAGE 1: PORTADA ---
-    let page = pdfDoc.addPage([595, 842]); // A4
-    const { width, height } = page.getSize();
-    const margin = 50;
+    const margin = 40;
+    const width = 595; // A4 Width
+    const height = 842; // A4 Height
     const contentWidth = width - 2 * margin;
-    let yPosition = height - margin;
+
+    // --- PAGE MANAGEMENT ---
+    let page = pdfDoc.addPage([width, height]);
+    page.drawRectangle({ x: 0, y: 0, width, height, color: COLORS.bg });
+
+    let yPos = height - margin;
+
+    // Helper to add new page if needed
+    const checkPageBreak = (neededHeight: number) => {
+      if (yPos - neededHeight < margin) {
+        page = pdfDoc.addPage([width, height]);
+        page.drawRectangle({ x: 0, y: 0, width, height, color: COLORS.bg });
+        yPos = height - margin;
+        return true;
+      }
+      return false;
+    };
+
+    // --- INTERNAL HELPERS FOR PAGINATION ---
+
+    const drawListInternal = (
+      title: string,
+      items: string[],
+      x: number,
+      w: number,
+      color: RGB
+    ) => {
+      // Draw Title
+      checkPageBreak(30);
+      page.drawText(title, {
+        x,
+        y: yPos,
+        size: 14,
+        font: boldFont,
+        color: color,
+      });
+      yPos -= 20;
+
+      for (const item of items) {
+        const wrapped = wrapText(item, w - 20, regularFont, 9);
+        const itemH = wrapped.length * 13 + 5;
+
+        checkPageBreak(itemH);
+
+        // Bullet
+        page.drawCircle({ x: x + 5, y: yPos - 5, size: 2, color: color });
+
+        let ty = yPos - 8;
+        for (const line of wrapped) {
+          page.drawText(line, {
+            x: x + 15,
+            y: ty,
+            size: 9,
+            font: regularFont,
+            color: COLORS.secondaryText,
+          });
+          ty -= 13;
+        }
+        yPos -= itemH;
+      }
+    };
+
+    // --- HEADER (First Page) ---
+    // Logo
+    if (logoBuffer) {
+      try {
+        console.log(
+          "Attempting to embed logo, buffer size:",
+          logoBuffer.byteLength
+        );
+        // Try embedding as PNG first
+        let logoImage;
+        try {
+          logoImage = await pdfDoc.embedPng(logoBuffer);
+        } catch (e) {
+          console.log("PNG embed failed, trying JPG", e);
+          try {
+            logoImage = await pdfDoc.embedJpg(logoBuffer);
+          } catch (e2) {
+            console.log("JPG embed failed too", e2);
+          }
+        }
+
+        if (logoImage) {
+          const logoDims = logoImage.scale(0.15); // Scale down
+          page.drawImage(logoImage, {
+            x: margin,
+            y: height - margin - logoDims.height,
+            width: logoDims.width,
+            height: logoDims.height,
+          });
+        } else {
+          console.error("Could not create logoImage");
+        }
+      } catch (e) {
+        console.error("Failed to embed logo", e);
+      }
+    }
 
     // Header Title
-    yPosition -= 20;
-    page.drawText("Informe de Análisis de Vidriera", {
-      x: margin,
-      y: yPosition,
-      size: 26,
+    page.drawText("Análisis Completo", {
+      x: margin + 250,
+      y: height - margin - 20,
+      size: 24,
       font: boldFont,
-      color: rgb(0.1, 0.1, 0.1),
+      color: COLORS.primaryText,
     });
-    yPosition -= 30;
 
-    // Subtitle
-    page.drawText("Diagnóstico visual y comercial", {
-      x: margin,
-      y: yPosition,
-      size: 16,
-      font: regularFont,
-      color: rgb(0.4, 0.4, 0.4),
-    });
-    yPosition -= 40;
-
-    // Date & Product Name
     const formattedDate = formatDate(analysisDate);
-    page.drawText(`Fecha: ${formattedDate}`, {
-      x: margin,
-      y: yPosition,
-      size: 12,
+    page.drawText(`Generado el ${formattedDate}`, {
+      x: margin + 250,
+      y: height - margin - 40,
+      size: 9,
       font: regularFont,
-      color: rgb(0.5, 0.5, 0.5),
+      color: COLORS.secondaryText,
     });
-    yPosition -= 20;
 
-    page.drawText("VidrieraEnCasa.com", {
+    yPos -= 80; // Move down after header
+
+    // --- TOP SECTION: Image & Score ---
+    const image = await pdfDoc.embedJpg(imageBuffer);
+    const imgW = 230;
+    const imgH = (image.height / image.width) * imgW;
+    const sectionHeight = Math.max(imgH, 150) + 40;
+
+    checkPageBreak(sectionHeight);
+
+    // Image Card
+    drawCard(page, margin, yPos - imgH - 20, imgW + 20, imgH + 20);
+    page.drawImage(image, {
+      x: margin + 10,
+      y: yPos - imgH - 10,
+      width: imgW,
+      height: imgH,
+    });
+
+    // Score Ring
+    const scoreX = margin + 330;
+    const scoreY = yPos - 70;
+    drawScoreRing(page, scoreX, scoreY, diagnosis.score, boldFont, regularFont);
+
+    yPos -= sectionHeight;
+
+    // --- RESUMEN DEL ANÁLISIS ---
+    checkPageBreak(150); // Estimate needed space
+    page.drawText("Resumen del Análisis", {
       x: margin,
-      y: yPosition,
-      size: 12,
+      y: yPos,
+      size: 16,
       font: boldFont,
-      color: rgb(0.2, 0.4, 0.8), // Brand color-ish
+      color: COLORS.primaryText,
     });
-    yPosition -= 40;
+    yPos -= 25;
 
-    // Main Image (Centered and Large)
-    try {
-      const image = await pdfDoc.embedJpg(imageBuffer);
-
-      const imageAspectRatio = image.width / image.height;
-      const maxImageHeight = 400;
-      let imageWidth = contentWidth;
-      let imageHeight = imageWidth / imageAspectRatio;
-
-      if (imageHeight > maxImageHeight) {
-        imageHeight = maxImageHeight;
-        imageWidth = imageHeight * imageAspectRatio;
-      }
-
-      // Center image
-      const xCentered = margin + (contentWidth - imageWidth) / 2;
-
-      page.drawImage(image, {
-        x: xCentered,
-        y: yPosition - imageHeight,
-        width: imageWidth,
-        height: imageHeight,
-      });
-      yPosition -= imageHeight + 20;
-    } catch (e) {
-      console.error("Failed to embed image", e);
-      page.drawText("(Imagen no disponible)", {
-        x: margin,
-        y: yPosition,
-        size: 12,
-        font: regularFont,
-        color: rgb(0.6, 0.6, 0.6),
-      });
-      yPosition -= 40;
-    }
-
-    // --- PAGE 2: CONTENIDO ---
-    page = pdfDoc.addPage([595, 842]);
-    yPosition = height - margin;
-
-    // 2. Resumen Ejecutivo (Destacado)
-    yPosition = drawWrappedBlock(
+    yPos = drawSummaryBox(
       page,
-      "Resumen del Diagnóstico",
       diagnosis.overallAssessment,
-      yPosition,
+      yPos,
       margin,
       contentWidth,
-      boldFont,
-      regularFont,
-      rgb(0.96, 0.96, 0.98), // Light blue-gray bg
-      rgb(0.2, 0.2, 0.2)
+      italicFont
     );
-    yPosition -= 30;
+    yPos -= 40;
 
-    // 3. Fortalezas
-    yPosition = drawListSection(
-      page,
-      "Fortalezas de la Vidriera",
-      "Aspectos que hoy están funcionando correctamente",
-      diagnosis.strengths || [],
-      yPosition,
-      margin,
-      contentWidth,
-      boldFont,
-      regularFont,
-      rgb(0.13, 0.55, 0.13), // Green
-      "+" // Safe char for strengths
-    );
-    yPosition -= 30;
-
-    // 4. Áreas que Están Frenando Ventas (Issues)
-    // Check page break before starting this section
-    if (yPosition < 200) {
-      page = pdfDoc.addPage([595, 842]);
-      yPosition = height - margin;
-    }
-
-    yPosition = drawListSection(
-      page,
-      "Áreas que Están Frenando Ventas",
-      "Puntos críticos que reducen la atracción de clientes",
-      diagnosis.issues || [],
-      yPosition,
-      margin,
-      contentWidth,
-      boldFont,
-      regularFont,
-      rgb(0.8, 0.2, 0.2), // Red
-      "-" // Safe char for issues
-    );
-    yPosition -= 30;
-
-    // 5. PRIORIDAD ABSOLUTA (Nuevo - Highlighted)
-    // Check page break
-    if (yPosition < 250) {
-      page = pdfDoc.addPage([595, 842]);
-      yPosition = height - margin;
-    }
-
-    yPosition = drawPrioritySection(
-      page,
-      "PRIORIDAD ABSOLUTA: Qué Cambiar Primero",
-      "Estos son los cambios de mayor impacto y menor costo",
-      diagnosis.priorityFixes || [],
-      yPosition,
-      margin,
-      contentWidth,
-      boldFont,
-      regularFont
-    );
-    yPosition -= 30;
-
-    // 6. Plan de Acción Recomendado
-    if (yPosition < 250) {
-      page = pdfDoc.addPage([595, 842]);
-      yPosition = height - margin;
-    }
-
-    yPosition = drawListSection(
-      page,
-      "Plan de Acción Recomendado",
-      "Lista de tareas sugeridas para aplicar esta semana",
-      diagnosis.recommendations || [],
-      yPosition,
-      margin,
-      contentWidth,
-      boldFont,
-      regularFont,
-      rgb(0.2, 0.4, 0.8), // Blue
-      "[ ]" // Checkbox style safe text
-    );
-    yPosition -= 30;
-
-    // 7. Texto Sugerido para Cartelería
-    if (yPosition < 200) {
-      page = pdfDoc.addPage([595, 842]);
-      yPosition = height - margin;
-    }
-
-    page.drawText("Texto Sugerido para Cartelería", {
+    // --- DIAGNÓSTICO ESPECÍFICO ---
+    checkPageBreak(200);
+    page.drawText("Diagnóstico Específico", {
       x: margin,
-      y: yPosition,
+      y: yPos,
+      size: 16,
+      font: boldFont,
+      color: COLORS.primaryText,
+    });
+    yPos -= 30;
+
+    const colW = (contentWidth - 20) / 2;
+
+    // Row 1
+    const h1 =
+      getTextHeight(diagnosis.focalPoints, colW - 30, regularFont, 9, 13) + 55;
+    const h2 =
+      getTextHeight(diagnosis.lighting, colW - 30, regularFont, 9, 13) + 55;
+    const row1H = Math.max(h1, h2);
+
+    checkPageBreak(row1H + 20);
+
+    drawSpecCard(
+      page,
+      "PUNTOS FOCALES",
+      diagnosis.focalPoints,
+      margin,
+      yPos,
+      colW,
+      boldFont,
+      regularFont,
+      COLORS.accent
+    );
+    drawSpecCard(
+      page,
+      "ILUMINACIÓN",
+      diagnosis.lighting,
+      margin + colW + 20,
+      yPos,
+      colW,
+      boldFont,
+      regularFont,
+      COLORS.warning
+    );
+
+    yPos -= row1H + 20;
+
+    // Row 2
+    const h3 =
+      getTextHeight(diagnosis.signage, colW - 30, regularFont, 9, 13) + 55;
+    const h4 =
+      getTextHeight(diagnosis.distribution, colW - 30, regularFont, 9, 13) + 55;
+    const row2H = Math.max(h3, h4);
+
+    checkPageBreak(row2H + 40);
+
+    drawSpecCard(
+      page,
+      "CARTELERÍA",
+      diagnosis.signage,
+      margin,
+      yPos,
+      colW,
+      boldFont,
+      regularFont,
+      COLORS.purple
+    );
+    drawSpecCard(
+      page,
+      "DISTRIBUCIÓN",
+      diagnosis.distribution,
+      margin + colW + 20,
+      yPos,
+      colW,
+      boldFont,
+      regularFont,
+      COLORS.success
+    );
+
+    yPos -= row2H + 40;
+
+    // --- LISTS (Fortalezas / Puntos a Mejorar) ---
+    // Note: Breaking lists into columns is tricky with pagination.
+    // If we want side-by-side lists that span pages, it's very complex.
+    // Simpler approach: Draw one list then the other, or ensure they don't break page awkwardly.
+    // Given the user wants "se corta en la mitad", pagination is key.
+    // Side-by-side works if they fit. If not, maybe stack them?
+    // Let's keep side-by-side but if one column flows to next page, it's weird.
+    // Better: Render them sequentially if they are long?
+    // Or just accept that if we break page, we break both columns.
+    // Actually, `drawListInternal` handles its own Y position.
+    // If we call it for left col, `yPos` goes down.
+    // Then we call it for right col? We need to reset `yPos` to top of list for right col?
+    // But if left col caused a page break, right col needs to start on new page too?
+    // This is hard.
+    // Alternative: Calculate max height of both lists. If > remaining space, break page.
+    // If > full page, then we have a problem.
+    // For now, let's assume they fit on one page OR stack them if safer.
+    // Stacking them is safer for pagination.
+    // Let's try stacking them to avoid complex column pagination issues.
+    // "Fortalezas" followed by "Puntos a Mejorar".
+
+    // User requested "mantener los colores" and likely layout.
+    // Let's try to keep 2 columns but sync the Y position.
+    // If we break page, we break for both.
+
+    // Actually, let's iterate both lists simultaneously line by line? No.
+    // Let's just calculate total height.
+    const listColW = (contentWidth - 40) / 2;
+    // We will render them side by side.
+    // We need to track Y for left and right separately, but sync page breaks.
+    // This is too complex for this script.
+    // Let's render them stacked. It's cleaner for generated PDF reading anyway.
+    // OR: Check if they fit. If not, stack.
+
+    // Let's stack them for reliability.
+    // "Fortalezas"
+    drawListInternal(
+      "Fortalezas",
+      diagnosis.strengths,
+      margin,
+      contentWidth,
+      COLORS.success
+    );
+    yPos -= 20;
+
+    // "Puntos a Mejorar"
+    drawListInternal(
+      "Puntos a Mejorar",
+      diagnosis.issues,
+      margin,
+      contentWidth,
+      COLORS.warning
+    );
+    yPos -= 30;
+
+    // --- ACCIONES PRIORITARIAS ---
+    checkPageBreak(100);
+    page.drawText("Acciones Prioritarias", {
+      x: margin,
+      y: yPos,
+      size: 16,
+      font: boldFont,
+      color: COLORS.danger,
+    });
+    yPos -= 25;
+
+    const actionW = (contentWidth - 20) / 2;
+
+    for (let i = 0; i < diagnosis.priorityFixes.length; i++) {
+      const isLeft = i % 2 === 0;
+      // If left, we decide row height based on pair.
+      if (isLeft) {
+        let maxH = getActionCardHeight(
+          diagnosis.priorityFixes[i],
+          actionW,
+          regularFont
+        );
+        if (i + 1 < diagnosis.priorityFixes.length) {
+          const nextH = getActionCardHeight(
+            diagnosis.priorityFixes[i + 1],
+            actionW,
+            regularFont
+          );
+          maxH = Math.max(maxH, nextH);
+        }
+
+        checkPageBreak(maxH + 20);
+
+        drawPriorityCard(
+          page,
+          diagnosis.priorityFixes[i],
+          margin,
+          yPos,
+          actionW,
+          maxH,
+          boldFont,
+          regularFont
+        );
+
+        if (i + 1 < diagnosis.priorityFixes.length) {
+          drawPriorityCard(
+            page,
+            diagnosis.priorityFixes[i + 1],
+            margin + actionW + 20,
+            yPos,
+            actionW,
+            maxH,
+            boldFont,
+            regularFont
+          );
+        }
+        yPos -= maxH + 20;
+      }
+    }
+
+    yPos -= 20;
+
+    // --- PLAN DE MEJORA ---
+    // Stacked for safety
+    drawListInternal(
+      "Plan de Mejora",
+      diagnosis.recommendations,
+      margin,
+      contentWidth,
+      COLORS.accent
+    );
+    yPos -= 30;
+
+    // --- SUGERENCIA DE CARTELERÍA ---
+    const signageText = diagnosis.suggestedSignageText || "No se generó texto.";
+    const signageH =
+      getTextHeight(signageText, contentWidth - 30, italicFont, 12, 18) + 60;
+
+    checkPageBreak(signageH);
+
+    page.drawText("Sugerencia de Cartelería", {
+      x: margin,
+      y: yPos,
       size: 14,
       font: boldFont,
-      color: rgb(0.1, 0.1, 0.1),
+      color: COLORS.purple,
     });
-    yPosition -= 25;
 
-    page.drawText("Texto sugerido para usar en la vidriera:", {
-      x: margin,
-      y: yPosition,
-      size: 11,
-      font: regularFont,
-      color: rgb(0.4, 0.4, 0.4),
-    });
-    yPosition -= 20;
-
-    // Box for signage
-    const signageText = diagnosis.suggestedSignageText
-      ? `"${diagnosis.suggestedSignageText}"`
-      : "(No se generó texto específico)";
-
-    const wrappedSignage = wrapText(
+    drawSignageBox(
+      page,
       signageText,
-      contentWidth - 40,
-      regularFont,
-      14
-    ); // Larger font for signage
-    const boxHeight = wrappedSignage.length * 20 + 40;
-
-    // Background for signage
-    page.drawRectangle({
-      x: margin,
-      y: yPosition - boxHeight,
-      width: contentWidth,
-      height: boxHeight,
-      color: rgb(0.98, 0.98, 0.98),
-      borderColor: rgb(0.8, 0.8, 0.8),
-      borderWidth: 1,
-    });
-
-    let signageY = yPosition - 30;
-    for (const line of wrappedSignage) {
-      // Center text in box
-      const textWidth = regularFont.widthOfTextAtSize(line, 14);
-      const textX = margin + (contentWidth - textWidth) / 2;
-
-      page.drawText(line, {
-        x: textX,
-        y: signageY,
-        size: 14,
-        font: regularFont, // Could be italic if available
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      signageY -= 20;
-    }
+      margin,
+      yPos - 25,
+      contentWidth,
+      italicFont
+    );
 
     const pdfBytes = await pdfDoc.save();
     return pdfBytes.buffer as ArrayBuffer;
@@ -298,267 +464,268 @@ export async function generateAnalysisPDF(
   }
 }
 
-/**
- * Draw a section with title, intro and bullet points
- */
-function drawListSection(
+// --- HELPER FUNCTIONS ---
+
+function drawCard(
   page: PDFPage,
-  title: string,
-  intro: string,
-  items: string[],
-  startY: number,
-  margin: number,
-  pageWidth: number,
-  boldFont: PDFFont,
-  regularFont: PDFFont,
-  titleColor: RGB,
-  bulletChar: string
-): number {
-  let yPosition = startY;
-
-  // Title
-  page.drawText(title, {
-    x: margin,
-    y: yPosition,
-    size: 16,
-    font: boldFont,
-    color: titleColor,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color = COLORS.card
+) {
+  // Simple rectangle, no rounded corners, no borders
+  page.drawRectangle({
+    x,
+    y,
+    width: w,
+    height: h,
+    color: color,
   });
-  yPosition -= 20;
-
-  // Intro
-  if (intro) {
-    page.drawText(intro, {
-      x: margin,
-      y: yPosition,
-      size: 10,
-      font: regularFont,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-    yPosition -= 25;
-  }
-
-  // Items
-  for (const item of items) {
-    const bulletX = margin + 10;
-    const textX = margin + 30;
-    const maxTextWidth = pageWidth - 40;
-
-    // Draw bullet
-    page.drawText(bulletChar, {
-      x: bulletX,
-      y: yPosition,
-      size: 12,
-      font: boldFont,
-      color: titleColor,
-    });
-
-    // Wrap text
-    const wrappedLines = wrapText(item, maxTextWidth, regularFont, 11);
-
-    for (const line of wrappedLines) {
-      page.drawText(line, {
-        x: textX,
-        y: yPosition,
-        size: 11,
-        font: regularFont,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 18;
-    }
-    yPosition -= 8; // Spacing between items
-  }
-
-  return yPosition;
 }
 
-/**
- * Draw the "Priority Fixes" section with special styling
- */
-function drawPrioritySection(
+function drawScoreRing(
   page: PDFPage,
-  title: string,
-  intro: string,
-  items: string[],
-  startY: number,
-  margin: number,
-  pageWidth: number,
+  x: number,
+  y: number,
+  score: number,
   boldFont: PDFFont,
   regularFont: PDFFont
-): number {
-  let yPosition = startY;
+) {
+  const size = 40;
+  const status = score < 40 ? "Crítico" : score < 70 ? "Regular" : "Excelente";
+  const statusColor =
+    score < 40 ? COLORS.danger : score < 70 ? COLORS.warning : COLORS.success;
 
-  // Calculate total height needed roughly
-  // This is hard to do perfectly without wrapping first, but we assume it fits or we already checked page break.
+  // Background Circle
+  page.drawCircle({
+    x,
+    y,
+    size,
+    borderColor: rgb(0.1, 0.15, 0.25),
+    borderWidth: 5,
+  });
 
-  // Draw Header
-  page.drawText(title, {
-    x: margin,
-    y: yPosition,
-    size: 16,
+  // Active Arc
+  page.drawCircle({
+    x,
+    y,
+    size,
+    borderColor: statusColor,
+    borderWidth: 3,
+    opacity: 0.5,
+  });
+
+  page.drawText(score.toString(), {
+    x: x - boldFont.widthOfTextAtSize(score.toString(), 24) / 2,
+    y: y - 8,
+    size: 24,
     font: boldFont,
-    color: rgb(0.8, 0.3, 0.0), // Burnt orange
+    color: COLORS.primaryText,
   });
-  yPosition -= 20;
 
-  page.drawText(intro, {
-    x: margin,
-    y: yPosition,
-    size: 10,
+  page.drawText("PUNTAJE GENERAL", {
+    x: x + 55,
+    y: y + 10,
+    size: 7,
     font: regularFont,
-    color: rgb(0.5, 0.5, 0.5),
+    color: COLORS.secondaryText,
   });
-  yPosition -= 30;
 
-  // Draw Items in a "Card" style
-  for (const item of items) {
-    const cardPadding = 10;
-    const maxTextWidth = pageWidth - 2 * cardPadding;
-    const wrappedLines = wrapText(item, maxTextWidth, boldFont, 11); // Bold text for priority
-    const cardHeight = wrappedLines.length * 18 + 2 * cardPadding;
-
-    // Card Background
-    page.drawRectangle({
-      x: margin,
-      y: yPosition - cardHeight + cardPadding + 5, // Adjust for text baseline
-      width: pageWidth,
-      height: cardHeight,
-      color: rgb(1, 0.95, 0.9), // Light orange bg
-      borderColor: rgb(1, 0.8, 0.6),
-      borderWidth: 1,
-    });
-
-    // Text
-    let textY = yPosition;
-    for (const line of wrappedLines) {
-      page.drawText(line, {
-        x: margin + cardPadding,
-        y: textY,
-        size: 11,
-        font: boldFont,
-        color: rgb(0.2, 0.1, 0.0),
-      });
-      textY -= 18;
-    }
-
-    yPosition -= cardHeight + 10;
-  }
-
-  return yPosition;
+  page.drawText(status, {
+    x: x + 55,
+    y: y - 10,
+    size: 14,
+    font: boldFont,
+    color: statusColor,
+  });
 }
 
-/**
- * Draw a wrapped block of text (for Executive Summary)
- */
-function drawWrappedBlock(
+function drawSummaryBox(
+  page: PDFPage,
+  text: string,
+  y: number,
+  x: number,
+  w: number,
+  font: PDFFont
+): number {
+  const padding = 20;
+  const wrapped = wrapText(text, w - 2 * padding, font, 11);
+  const h = wrapped.length * 16 + 2 * padding;
+
+  drawCard(page, x, y - h, w, h);
+
+  let ty = y - padding - 11;
+  for (const line of wrapped) {
+    page.drawText(line, {
+      x: x + padding,
+      y: ty,
+      size: 11,
+      font: font,
+      color: COLORS.secondaryText,
+    });
+    ty -= 16;
+  }
+  return y - h;
+}
+
+function drawSpecCard(
   page: PDFPage,
   title: string,
   text: string,
-  startY: number,
-  margin: number,
-  width: number,
+  x: number,
+  y: number,
+  w: number,
   boldFont: PDFFont,
   regularFont: PDFFont,
-  bgColor: RGB,
-  textColor: RGB
-): number {
-  let yPosition = startY;
-
-  // Title
-  page.drawText(title, {
-    x: margin,
-    y: yPosition,
-    size: 18,
-    font: boldFont,
-    color: rgb(0.1, 0.1, 0.1),
-  });
-  yPosition -= 25;
-
-  // Content Box
+  accentColor: RGB
+) {
   const padding = 15;
-  const textWidth = width - 2 * padding;
-  const wrappedLines = wrapText(text || "", textWidth, regularFont, 12);
-  const boxHeight = wrappedLines.length * 20 + 2 * padding;
+  const wrapped = wrapText(text, w - 2 * padding, regularFont, 9);
+  const h = wrapped.length * 13 + 55;
 
+  drawCard(page, x, y - h, w, h);
+
+  // Header with "icon" (colored square)
   page.drawRectangle({
-    x: margin,
-    y: yPosition - boxHeight,
-    width: width,
-    height: boxHeight,
-    color: bgColor,
-    // borderRadius: 4, // pdf-lib doesn't support radius easily in drawRectangle, keeping simple
+    x: x + padding,
+    y: y - 25,
+    width: 8,
+    height: 8,
+    color: accentColor,
+  });
+  page.drawText(title, {
+    x: x + padding + 15,
+    y: y - 24,
+    size: 9,
+    font: boldFont,
+    color: COLORS.primaryText,
   });
 
-  let textY = yPosition - padding - 10; // -10 for baseline adjustment
-  for (const line of wrappedLines) {
+  let ty = y - 45;
+  for (const line of wrapped) {
     page.drawText(line, {
-      x: margin + padding,
-      y: textY,
-      size: 12,
+      x: x + padding,
+      y: ty,
+      size: 9,
       font: regularFont,
-      color: textColor,
+      color: COLORS.secondaryText,
     });
-    textY -= 20;
+    ty -= 13;
   }
-
-  return yPosition - boxHeight - 20;
 }
 
-/**
- * Wrap text to fit within specified width
- */
+function drawPriorityCard(
+  page: PDFPage,
+  text: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  boldFont: PDFFont,
+  regularFont: PDFFont
+) {
+  const padding = 12;
+  const wrapped = wrapText(text, w - 2 * padding, regularFont, 9);
+
+  drawCard(page, x, y - h, w, h, rgb(0.12, 0.05, 0.05)); // Dark red card
+
+  page.drawText("ACCIÓN RECOMENDADA", {
+    x: x + padding,
+    y: y - padding - 8,
+    size: 7,
+    font: boldFont,
+    color: rgb(1, 0.4, 0.4),
+  });
+
+  let ty = y - padding - 22;
+  for (const line of wrapped) {
+    page.drawText(line, {
+      x: x + padding,
+      y: ty,
+      size: 9,
+      font: regularFont,
+      color: rgb(1, 0.8, 0.8),
+    });
+    ty -= 12;
+  }
+}
+
+function drawSignageBox(
+  page: PDFPage,
+  text: string,
+  x: number,
+  y: number,
+  w: number,
+  font: PDFFont
+) {
+  const padding = 15;
+  const wrapped = wrapText(text, w - 2 * padding, font, 12);
+  const h = wrapped.length * 18 + 2 * padding;
+
+  drawCard(page, x, y - h, w, h, rgb(0.08, 0.05, 0.12)); // Dark purple box
+
+  let ty = y - padding - 12;
+  for (const line of wrapped) {
+    page.drawText(line, {
+      x: x + padding,
+      y: ty,
+      size: 12,
+      font: font,
+      color: COLORS.primaryText,
+    });
+    ty -= 18;
+  }
+}
+
+// --- UTILS ---
+
 function wrapText(
   text: string,
-  maxWidth: number,
+  width: number,
   font: PDFFont,
-  fontSize: number
+  size: number
 ): string[] {
   if (!text) return [];
   const words = text.split(" ");
   const lines: string[] = [];
-  let currentLine = "";
+  let currentLine = words[0];
 
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-
-    if (testWidth > maxWidth && currentLine) {
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const lineWithWord = `${currentLine} ${word}`;
+    if (font.widthOfTextAtSize(lineWithWord, size) < width) {
+      currentLine = lineWithWord;
+    } else {
       lines.push(currentLine);
       currentLine = word;
-    } else {
-      currentLine = testLine;
     }
   }
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
+  lines.push(currentLine);
   return lines;
 }
 
-/**
- * Format date in Spanish
- */
+function getTextHeight(
+  text: string,
+  w: number,
+  font: PDFFont,
+  size: number,
+  lineH: number
+) {
+  const wrapped = wrapText(text, w, font, size);
+  return wrapped.length * lineH;
+}
+
+function getActionCardHeight(text: string, w: number, font: PDFFont) {
+  const padding = 12;
+  const wrapped = wrapText(text, w - 2 * padding, font, 9);
+  return wrapped.length * 12 + 22 + 12 + 10; // Padding top + Title + Text + Padding bottom
+}
+
 function formatDate(date: Date): string {
-  const months = [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-  ];
-
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-
-  return `${day} de ${month} de ${year}`;
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
 }

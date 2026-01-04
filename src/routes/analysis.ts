@@ -12,6 +12,7 @@ import { analyzeImageWithGemini } from "../lib/ai/analyze-with-gemini";
 import { z } from "zod";
 
 import { generateAnalysisPDF } from "../lib/pdf/generate-analysis-pdf";
+import { LOGO_BASE64 } from "../lib/assets/logo";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -61,15 +62,24 @@ app.post("/generate-pdf", async (c) => {
       return c.json({ error: "Failed to fetch image" }, 502);
     }
 
-    const mimeType = (analysis.image as { mimeType?: string }).mimeType || "";
-
-    if (!sourceImageBuffer) {
-      return c.json({ error: "Failed to fetch or convert image" }, 502);
+    // Load logo from assets (embedded base64)
+    let logoBuffer: Uint8Array | undefined;
+    try {
+      const binaryString = atob(LOGO_BASE64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      logoBuffer = bytes;
+      console.log("Logo loaded from base64, size:", logoBuffer.length);
+    } catch (e) {
+      console.error("Failed to load logo from base64", e);
     }
 
     // Generate PDF
     const pdfBuffer = await generateAnalysisPDF({
       imageBuffer: sourceImageBuffer,
+      logoBuffer,
       analysisDate: analysis.createdAt,
       diagnosis: JSON.parse(analysis.diagnosis),
     });
